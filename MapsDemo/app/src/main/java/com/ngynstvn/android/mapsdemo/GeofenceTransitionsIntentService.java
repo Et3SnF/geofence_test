@@ -27,6 +27,10 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
     private NotificationManager notificationManager;
 
+    public GeofenceTransitionsIntentService() {
+        super("GeofenceTransitionsIntentService");
+    }
+
     public GeofenceTransitionsIntentService(String name) {
         super(name);
     }
