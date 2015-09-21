@@ -7,6 +7,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
@@ -20,6 +21,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -36,9 +38,12 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private GoogleApiClient googleApiClient;
 
     private Location location;
-    private double latitude;
-    private double longitude;
+    private static double latitude;
+    private static double longitude;
+    private static float zoom;
     private static int counter = 0;
+
+    private CameraPosition cameraPosition;
 
     private List<Geofence> geofenceList;
     private PendingIntent geofencePendingIntent;
@@ -48,49 +53,59 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.v(TAG, "onCreate() called");
+        Log.e(TAG, "onCreate() called");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         buildGoogleApiClient();
         geofenceList = new ArrayList<>();
+
+        if(savedInstanceState != null) {
+            latitude = savedInstanceState.getDouble("latitude");
+            longitude = savedInstanceState.getDouble("longitude");
+            zoom = savedInstanceState.getFloat("zoom");
+            counter = savedInstanceState.getInt("counter");
+            Log.v(TAG, "Retrieved: (" + latitude + ", " + longitude + ") | zoom =" + zoom);
+        }
+
         setUpMapIfNeeded();
     }
 
     @Override
     protected void onResume() {
-        Log.v(TAG, "onResume() called");
+        Log.e(TAG, "onResume() called");
         super.onResume();
-        counter++;
-        Log.v(TAG, "onResume() call counter: " + counter);
-        if (mMap != null && counter == 2) {
-            setUpMap();
-
-//            LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
-//                    getGeofencePendingIntent()).setResultCallback(this);
-
-        }
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), zoom), 1000, null);
     }
 
     @Override
     protected void onPause() {
-        Log.v(TAG, "onPause() called");
+        Log.e(TAG, "onPause() called");
         super.onPause();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        Log.v(TAG, "onSaveInstanceState() called");
+        Log.e(TAG, "onSaveInstanceState() called");
         super.onSaveInstanceState(outState);
+
+        cameraPosition = mMap.getCameraPosition();
+        latitude = cameraPosition.target.latitude;
+        longitude = cameraPosition.target.longitude;
+        zoom = cameraPosition.zoom;
+
+        outState.putDouble("latitude", latitude);
+        outState.putDouble("longitude", longitude);
+        outState.putFloat("zoom", zoom);
+        outState.putInt("counter", counter);
+
+        Log.v(TAG, "Saved position: (" + latitude + ", "
+                + longitude + ") zoom= " + zoom);
     }
 
     @Override
     protected void onDestroy() {
-        Log.v(TAG, "onDestroy() called");
+        Log.e(TAG, "onDestroy() called");
         super.onDestroy();
-
-        if (googleApiClient.isConnected()) {
-            googleApiClient.disconnect();
-        }
     }
 
     private void setUpMapIfNeeded() {
@@ -101,22 +116,44 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
                     .getMap();
         }
+
+        // Place this method here to ensure restoring state works properly
+
+        new Handler().post(new Runnable() {
+            @Override
+            public void run() {
+                mMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+                    @Override
+                    public void onCameraChange(CameraPosition cameraPosition) {
+                        latitude = cameraPosition.target.latitude;
+                        longitude = cameraPosition.target.longitude;
+                        zoom = cameraPosition.zoom;
+
+                        Log.v(TAG, "Current position: (" + latitude + ", " + longitude + ") | zoom = " + zoom);
+                    }
+                });
+            }
+        });
+
     }
 
     // Only animate the map if it is first time opening the app
 
-    private void setUpMap() {
+    private void setUpMap(double latitude, double longitude, float zoom) {
         Log.v(TAG, "setUpMap() called");
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-
-        addPOI("823 Glenoaks Blvd", "Glendale", "CA", 450);
-
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14), 1000, null);
-
+        
         LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
                 getGeofencePendingIntent()).setResultCallback(this);
+
+        if(counter <= 1) {
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), zoom), 1000, null);
+        }
+        else {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), zoom));
+        }
     }
 
     // Connect to Google Play Services
@@ -137,18 +174,26 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     @Override
     public void onConnected(Bundle bundle) {
-
         Log.v(TAG, "onConnected() called");
+
+        counter++;
+
         location = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
 
-        if (location != null) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
+        if(counter <= 1) {
+
+            if (location != null) {
+                latitude = location.getLatitude();
+                longitude = location.getLongitude();
+                Log.v(TAG, "Your current location: (" + latitude + "," + longitude + ")");
+                setUpMap(latitude, longitude, 14);
+            }
+            else {
+                setUpMap(latitude, longitude, zoom);
+            }
+        } else if (counter > 1) {
             Log.v(TAG, "Your current location: (" + latitude + "," + longitude + ")");
-            setUpMap();
-        } else {
-            Log.v(TAG, "Location is null. Unable to get location");
-            setUpMap();
+            setUpMap(latitude, longitude, zoom);
         }
     }
 
@@ -175,12 +220,11 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
             latitude = addressObj.getLatitude();
             longitude = addressObj.getLongitude();
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
             Log.v(TAG, "Unable to parse address.");
         }
 
-        mMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).title("Marker"));
+        mMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).title("Dummy Location"));
         mMap.addCircle(new CircleOptions()
                 .center(new LatLng(latitude, longitude))
                 .radius(radius)
@@ -196,10 +240,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
                     .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL)
                     .build());
         }
-
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14));
     }
-
 
     /**
      * Geofencing Material
@@ -222,9 +263,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         }
 
         Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
-
-        return PendingIntent.getService(this, 0, intent, PendingIntent.
-                FLAG_UPDATE_CURRENT);
+        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     @Override

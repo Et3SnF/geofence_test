@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
+import android.media.RingtoneManager;
 import android.os.Build;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
@@ -107,6 +108,8 @@ public class GeofenceTransitionsIntentService extends IntentService {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Notification Demo")
                 .setContentText("Testing first notification")
+                .setVibrate(new long[] {0, 500, 300, 500})
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
                 .setAutoCancel(true);
 
         Intent intent = new Intent(this, MapsActivity.class);
@@ -134,7 +137,6 @@ public class GeofenceTransitionsIntentService extends IntentService {
         catch(NullPointerException e) {
             Toast.makeText(this, "There is no notification to stop.", Toast.LENGTH_SHORT).show();
         }
-
     }
 
     /**
