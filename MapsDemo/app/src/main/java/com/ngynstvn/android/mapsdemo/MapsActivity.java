@@ -98,8 +98,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         outState.putFloat("zoom", zoom);
         outState.putInt("counter", counter);
 
-        Log.v(TAG, "Saved position: (" + latitude + ", "
-                + longitude + ") zoom= " + zoom);
+        Log.v(TAG, "Saved position: (" + latitude + ", " + longitude + ") zoom= " + zoom);
     }
 
     @Override
@@ -144,7 +143,10 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-        
+
+        // Add an address here
+        addPOI("100 Awesome Street", "Cary", "NC", 400);
+
         LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
                 getGeofencePendingIntent()).setResultCallback(this);
 
