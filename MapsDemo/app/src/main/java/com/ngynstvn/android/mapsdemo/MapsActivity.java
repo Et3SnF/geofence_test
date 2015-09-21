@@ -3,6 +3,8 @@ package com.ngynstvn.android.mapsdemo;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -52,8 +54,6 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         buildGoogleApiClient();
         geofenceList = new ArrayList<>();
         setUpMapIfNeeded();
-
-
     }
 
     @Override
@@ -68,11 +68,6 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 //            LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
 //                    getGeofencePendingIntent()).setResultCallback(this);
 
-        } else if (mMap != null && counter > 2) {
-            reSetUpMap();
-
-//            LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
-//                    getGeofencePendingIntent()).setResultCallback(this);
         }
     }
 
@@ -114,85 +109,11 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         Log.v(TAG, "setUpMap() called");
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setZoomControlsEnabled(true);
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14));
-        mMap.addMarker(new MarkerOptions().position(new LatLng(34.144447, -118.257028)).title("Marker"));
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 
-        mMap.addCircle(new CircleOptions()
-                .center(new LatLng(34.144447, -118.257028))
-                .radius(400)
-                .fillColor(getResources().getColor(R.color.red_50))
-                .strokeColor(getResources().getColor(R.color.red_50))
-                .strokeWidth(0.00f));
+        addPOI("823 Glenoaks Blvd", "Glendale", "CA", 450);
 
-        geofenceList.add(new Geofence.Builder()
-                .setRequestId(String.valueOf(1))
-                .setCircularRegion(34.144447, -118.257028, 400)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
-
-        mMap.addMarker(new MarkerOptions().position(new LatLng(34.159260, -118.255139)).title("Marker"));
-        mMap.addCircle(new CircleOptions()
-                .center(new LatLng(34.159260, -118.255139))
-                .radius(400)
-                .fillColor(getResources().getColor(R.color.red_50))
-                .strokeColor(getResources().getColor(R.color.red_50))
-                .strokeWidth(0.00f));
-
-        geofenceList.add(new Geofence.Builder()
-                .setRequestId(String.valueOf(1))
-                .setCircularRegion(34.159260, -118.255139, 400)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
-
-        LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
-                getGeofencePendingIntent()).setResultCallback(this);
-    }
-
-    // Method to disable animation if the map has already been set up first time
-
-    private void reSetUpMap() {
-        Log.v(TAG, "reSetUpMap() called");
-        mMap.setMyLocationEnabled(true);
-        mMap.getUiSettings().setZoomControlsEnabled(true);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14));
-        mMap.addMarker(new MarkerOptions().position(new LatLng(34.144447, -118.257028)).title("Marker"));
-        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-
-        mMap.addCircle(new CircleOptions()
-                .center(new LatLng(34.144447, -118.257028))
-                .radius(400)
-                .fillColor(getResources().getColor(R.color.red_50))
-                .strokeColor(getResources().getColor(R.color.red_50))
-                .strokeWidth(0.00f));
-
-        geofenceList.add(new Geofence.Builder()
-                .setRequestId(String.valueOf(1))
-                .setCircularRegion(34.144447, -118.257028, 400)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
-
-        mMap.addMarker(new MarkerOptions().position(new LatLng(34.159260, -118.255139)).title("Marker"));
-        mMap.addCircle(new CircleOptions()
-                .center(new LatLng(34.159260, -118.255139))
-                .radius(400)
-                .fillColor(getResources().getColor(R.color.red_50))
-                .strokeColor(getResources().getColor(R.color.red_50))
-                .strokeWidth(0.00f));
-
-        geofenceList.add(new Geofence.Builder()
-                .setRequestId(String.valueOf(2))
-                .setCircularRegion(34.159260, -118.255139, 400)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14), 1000, null);
 
         LocationServices.GeofencingApi.addGeofences(googleApiClient, getGeofencingRequest(),
                 getGeofencePendingIntent()).setResultCallback(this);
@@ -212,7 +133,6 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             Log.v(TAG, "googleApiClient is connected");
             googleApiClient.connect();
         }
-
     }
 
     @Override
@@ -225,12 +145,11 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             latitude = location.getLatitude();
             longitude = location.getLongitude();
             Log.v(TAG, "Your current location: (" + latitude + "," + longitude + ")");
+            setUpMap();
         } else {
             Log.v(TAG, "Location is null. Unable to get location");
+            setUpMap();
         }
-
-        onResume();
-
     }
 
     @Override
@@ -242,6 +161,45 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.v(TAG, "onConnectionFailed() called");
     }
+
+    private void addPOI(String address, String city, String state, int radius) {
+        // radius = geofence radius and is in units of meters
+
+        Geocoder geocoder = new Geocoder(this);
+        List<Address> list;
+        Address addressObj;
+
+        try {
+            list = geocoder.getFromLocationName(address + " " + city + " " + state, 1);
+            addressObj = list.get(0);
+
+            latitude = addressObj.getLatitude();
+            longitude = addressObj.getLongitude();
+        }
+        catch(Exception e) {
+            Log.v(TAG, "Unable to parse address.");
+        }
+
+        mMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).title("Marker"));
+        mMap.addCircle(new CircleOptions()
+                .center(new LatLng(latitude, longitude))
+                .radius(radius)
+                .strokeColor(getResources().getColor(R.color.red_50))
+                .strokeWidth(2.00f));
+
+        if (geofenceList != null) {
+            geofenceList.add(new Geofence.Builder()
+                    .setRequestId(String.valueOf(1))
+                    .setCircularRegion(latitude, longitude, radius)
+                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                    .setLoiteringDelay(10000)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL)
+                    .build());
+        }
+
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 14));
+    }
+
 
     /**
      * Geofencing Material
